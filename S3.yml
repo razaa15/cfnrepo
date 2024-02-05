@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Configure Static Website Using S3 Bucket"
+Parameters:
+  bucketName: # Name should be meaningfull and also write description. There should not be any hard coded value in my resources
+    Type: String
+    Default: ali-7010-buckett
+    Description: This is the name of the S3 Bucket
+  indexDocument:
+    Type: String
+    Default: index.html
+    Description: It is an index html file.
+  errorDocument:
+    Type: String
+    Default: error.html
+    Description: It is an error html file.  
+  versioningConfiguration:
+    Type: String
+    Default: Enabled
+    AllowedValues:
+      - Suspended
+      - Enabled
+    Description: Enables multiple versions of all objects in the bucket.
+  policyDocument:
+    Type: String
+    Default: '2012-10-17'
+    Description: This specifies the version of the policy language being used.
+Resources:
+  s3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref bucketName
+      WebsiteConfiguration:
+        IndexDocument: !Ref indexDocument
+        ErrorDocument: !Ref errorDocument
+      VersioningConfiguration:
+        Status: !Ref versioningConfiguration
+  publicAccessBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref s3Bucket
+      PolicyDocument: 
+        Version: !Ref policyDocument
+        Statement:
+        - Sid: PublicReadGetObject
+          Effect: Allow
+          Principal: "*"
+          Action: s3:GetObject
+          Resource: !Sub "arn:aws:s3:::${bucketName}/*" # follow this method for arn  
+Outputs:
+  s3BucketWebsiteURL:
+    Value: !GetAtt s3Bucket.WebsiteURL
+    Description: URL for website hosted on S3
+  s3BucketSecureURL:
+    Value: !GetAtt s3Bucket.Arn
+    Description: Name of S3 bucket to hold website content  
+
+
+      
+

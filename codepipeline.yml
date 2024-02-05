@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cfn to deploy application through aws codepipeline
+Parameters:
+  project:
+    Type: String
+    Default: devops-training
+    Description: Project Name
+  app:
+    Type: String
+    Default: app  
+    Description: Application Name
+  env:
+    Type: String
+    Default: dev
+    AllowedValues: [prod, dev, qa, uat]
+    Description: Environment Name 
+  codePipelineServiceRole: 
+    Type: String 
+    Default: codePipelineRole
+    Description: The Arn of Code Pipeline Service Role  
+  codePipelineName: 
+    Type: String 
+    Default: webAppPipeline
+    Description: The Name of Code pipeline  
+  artifactsBucket: 
+    Type: String
+    Default: artifact-store-s3location
+    Description: Name of the S3 Bucket  
+  artifactStoreType: 
+    Type: String
+    Default: S3
+    Description: Type of artifact Store  
+  sourceProvider: 
+    Type: String
+    Default: S3  
+    Description: Store your input artifacts for your pipeline
+  s3ObjectKey:
+  Type: String
+  Default: webapp-custom.zip
+  Description: This is an object of S3 Bucket.
+  awsRegion:
+     Type: String
+     Default: us-east-1
+     AllowedValues: [us-east-1, us-west-1]
+	     Description: These are the AWS regions.
+Resources: 
+  appPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:  
+      Name: !Ref codePipelineName
+      ArtifactStore: 
+        Type: !Ref artifactStoreType 
+        Location: !Ref artifactsBucket 
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: !Ref sourceProvider
+                Version: 1
+              Configuration:
+                S3Bucket: artifact-store-s3location-app
+                S3ObjectKey: !Ref s3ObjectKey  
+              OutputArtifacts: 
+                - Name: SourceArtifact
+              Region: !Ref awsRegion
+              RunOrder: 1  
+        -
+          Name: Deploy
+          Actions:        
+            -
+              Name: DeployAction
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                BucketName: artifact-store-s3location-app-destination  
+                Extract: 'true'
+              InputArtifacts: 
+                - Name: SourceArtifact 
+              Region: !Ref awsRegion    
+              RunOrder: 2
+      RoleArn: !GetAtt codePipelineRole.Arn
+      Tags:
+        - Key: Name 
+          Value: !Ref codePipelineName
+        - Key: project
+          Value: !Ref project
+        - Key: app
+          Value: !Ref app
+        - Key: environment
+          Value: !Ref env
+  codePipelineRole:
+      Type: AWS::IAM::Role
+      Properties:    
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - codepipeline.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Path: "/"
+        Policies:
+          - PolicyName: s3BucketPolicy
+            PolicyDocument: 
+              Statement:
+              - Action:
+                - s3:DeleteObject
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:ListBucket
+                - s3:PutObject
+                - s3:GetBucketPolicy  
+                - s3:GetBucketVersioning
+                - s3:GetBucketLocation 
+                Resource: "arn:aws:s3:::*"   
+                Effect: Allow
+Outputs: 
+  appPipeline:  
+    Description: 'Name of the Code pipeline'
+    Value: !Ref appPipeline
+    Export:
+      Name: !Sub "${project}-${app}-${env}-appPipeline"
+  artifactsBucket:  
+    Description: 'Bucket Name for artifacts'
+    Value: !Ref artifactsBucket
+    Export:
+      Name: !Sub "${project}-${app}-${env}-artifactsBucket"              
+
+            
+
+
+
+
+
